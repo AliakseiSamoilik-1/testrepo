@@ -4,13 +4,16 @@
   "private": true,
   "type": "commonjs",
   "scripts": {
-    "clean": "powershell -NoProfile -Command \"if (Test-Path dist) { Remove-Item -Recurse -Force dist }; if (Test-Path build) { Remove-Item -Recurse -Force build }\"",
+    "clean": "rimraf dist build",
     "build": "npm run clean && tsc -p tsconfig.json",
     "test": "vitest run",
-    "package": "npm run build && powershell -NoProfile -Command \"if (Test-Path build) { Remove-Item -Recurse -Force build }; New-Item -ItemType Directory -Force build | Out-Null; Compress-Archive -Path dist/* -DestinationPath build/lambda.zip -Force\""
+    "package": "npm run build && mkdirp build && bestzip build/lambda.zip dist"
   },
   "devDependencies": {
     "@types/aws-lambda": "^8.10.150",
+    "bestzip": "^2.2.1",
+    "mkdirp": "^3.0.1",
+    "rimraf": "^6.0.1",
     "typescript": "^5.7.2",
     "vitest": "^2.1.8"
   }
