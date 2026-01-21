@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - main
+    paths:
+      - 'server/**'
 
 jobs:
   build-and-upload:
@@ -17,8 +19,10 @@ jobs:
           node-version: '24'
       - name: Install dependencies
         run: npm install
+        working-directory: server
       - name: Build Lambda
         run: npm run package
+        working-directory: server
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -26,6 +30,6 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
       - name: Upload to S3
-        run: aws s3 cp build/lambda.zip s3://${{ secrets.S3_BUCKET_NAME }}/lambda.zip
+        run: aws s3 cp server/build/lambda.zip s3://${{ secrets.S3_BUCKET_NAME }}/lambda.zip
       - name: Deploy to Lambda
         run: aws lambda update-function-code --function-name ${{ secrets.LAMBDA_FUNCTION_NAME }} --s3-bucket ${{ secrets.S3_BUCKET_NAME }} --s3-key lambda.zip
