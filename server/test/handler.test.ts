@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { handler } from "./handler";
+import { handler } from "../src/handler";
 
 describe("handler", () => {
   it("returns OK", async () => {

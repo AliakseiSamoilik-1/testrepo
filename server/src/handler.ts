@@ -11,7 +11,6 @@ export const handler = async (): Promise<APIGatewayProxyResult> => {
     headers: {
       "content-type": "text/plain"
     },
-    body: "sever/OKI-doki"
+    body: "OK"
   };
 };
-
