@@ -5,16 +5,37 @@
   "type": "commonjs",
   "scripts": {
     "clean": "rimraf dist build",
-    "build": "npm run clean && tsc -p tsconfig.json",
-    "test": "vitest run",
-    "package": "npm run build && mkdirp build && bestzip build/lambda.zip dist"
+    "build": "npm run clean && tsc -p tsconfig.build.json",
+    "test": "vitest run test --config vitest.config.ts",
+    "test-int": "vitest run test-int --config vitest.config.int.ts",
+    "package": "npm run test && npm run build && mkdirp build && bestzip build/lambda.zip dist/src/*"
+  },
+  "dependencies": {
+    "@langchain/core": "^1.0.6",
+    "@langchain/openai": "^1.1.2",
+    "axios": "^1.13.2",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "langchain": "^1.0.6",
+    "p-limit": "^7.2.0",
+    "serverless-http": "^4.0.0",
+    "sqlite3": "^5.1.7"
   },
   "devDependencies": {
+    "@eslint/js": "^8.56.0",
     "@types/aws-lambda": "^8.10.150",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.5",
+    "@types/jsonwebtoken": "^9.0.10",
     "bestzip": "^2.2.1",
+    "globals": "^13.24.0",
     "mkdirp": "^3.0.1",
     "rimraf": "^6.0.1",
+    "ts-node": "^10.9.2",
     "typescript": "^5.7.2",
+    "typescript-eslint": "^7.6.0",
     "vitest": "^2.1.8"
   }
 }

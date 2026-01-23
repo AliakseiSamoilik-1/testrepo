@@ -9,4 +9,3 @@ describe("handler", () => {
     expect(res.body).toBe("OK");
   });
 });
-

@@ -1,2 +1,0 @@
-This project now contains a minimal AWS Lambda TypeScript handler in `src/handler.ts`.
-
