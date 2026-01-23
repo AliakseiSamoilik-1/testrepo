@@ -8,7 +8,7 @@
     "build": "npm run clean && tsc -p tsconfig.build.json",
     "test": "vitest run test --config vitest.config.ts",
     "test-int": "vitest run test-int --config vitest.config.int.ts",
-    "package": "npm run test && npm run build && mkdirp build && bestzip build/lambda.zip dist/src/*"
+    "package": "npm run test && npm run build && mkdirp build && bestzip build/lambda.zip dist/*"
   },
   "dependencies": {
     "@langchain/core": "^1.0.6",
