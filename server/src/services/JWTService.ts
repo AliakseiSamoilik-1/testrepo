@@ -24,6 +24,18 @@ export class JWTService {
     };
   }
 
+  static getServiceAccountFromEnv(): ServiceAccount {
+    const secretContent: string | undefined = process.env.JWT_PRIVATE_KEY;
+    if (!secretContent) {
+      throw new Error('JWT_PRIVATE_KEY environment variable is not set');
+    }
+    const creds = JSON.parse(secretContent);
+    return {
+      client_email: creds.client_email,
+      private_key: creds.private_key,
+    };
+  }
+
   generateJWT(scope: string): string {
     const now = Math.floor(Date.now() / 1000);
     const payload = {
