@@ -1,1 +1,12 @@
 /node_modules/
+/build.cmd
+/server/dist/
+/.idea/
+/server/build/
+.gitignore
+/server/package-lock.json
+/server/node_modules/
+/server/vitest-report.xml
+/package-lock.json
+/server/src/.env
+/server/jwt-private-key.json
