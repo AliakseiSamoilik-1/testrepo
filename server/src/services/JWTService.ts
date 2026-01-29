@@ -1,7 +1,7 @@
 // JWTService.ts
 // Generates a JWT for Google service account authentication
 import * as jwt from 'jsonwebtoken';
-import * as fs from 'fs';
+import * as fs from 'node:fs';
 
 export interface ServiceAccount {
   client_email: string;
@@ -10,10 +10,16 @@ export interface ServiceAccount {
 
 export class JWTService {
   private static readonly filePath = './jwt-private-key.json';
-  private serviceAccount: ServiceAccount;
+  private readonly serviceAccount: ServiceAccount;
+  private static readonly scope: string = "https://www.googleapis.com/auth/spreadsheets";
 
   constructor() {
-    this.serviceAccount = JWTService.getServiceAccountFromFile(JWTService.filePath);
+    try {
+      this.serviceAccount = JWTService.getServiceAccountFromEnv();
+    } catch (e) {
+      this.serviceAccount = JWTService.getServiceAccountFromFile(JWTService.filePath);
+      console.log(e);
+    }
   }
 
   static getServiceAccountFromFile(filePath: string): ServiceAccount {
@@ -25,9 +31,9 @@ export class JWTService {
   }
 
   static getServiceAccountFromEnv(): ServiceAccount {
-    const secretContent: string | undefined = process.env.JWT_PRIVATE_KEY;
+    const secretContent: string | undefined = process.env.JWT_PRIVATE_KEY_JSON;
     if (!secretContent) {
-      throw new Error('JWT_PRIVATE_KEY environment variable is not set');
+      throw new Error('JWT_PRIVATE_KEY_JSON environment variable is not set');
     }
     const creds = JSON.parse(secretContent);
     return {
@@ -36,11 +42,11 @@ export class JWTService {
     };
   }
 
-  generateJWT(scope: string): string {
+  generateJWT(): string {
     const now = Math.floor(Date.now() / 1000);
     const payload = {
       iss: this.serviceAccount.client_email,
-      scope,
+      scope: JWTService.scope,
       aud: 'https://oauth2.googleapis.com/token',
       iat: now,
       exp: now + 3600,
