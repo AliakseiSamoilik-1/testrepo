@@ -10,30 +10,23 @@
   body { font-family: system-ui, sans-serif; background: #0f0f0f; color: #fff; min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 2rem 1rem; }
   h1 { font-size: 1.4rem; font-weight: 500; margin-bottom: 0.4rem; }
   .sub { color: #888; font-size: 0.9rem; margin-bottom: 2rem; }
-
   video { width: 100%; max-width: 680px; aspect-ratio: 16/9; background: #1a1a1a; border-radius: 12px; object-fit: cover; display: block; }
-
   .card { background: #1a1a1a; border: 0.5px solid #333; border-radius: 12px; padding: 1.25rem 1.5rem; width: 100%; max-width: 680px; margin-top: 1.5rem; }
   .card label { font-size: 0.8rem; color: #888; text-transform: uppercase; letter-spacing: 0.05em; }
-
   .id-row { display: flex; align-items: center; gap: 0.75rem; margin-top: 0.5rem; }
-  .id-box { flex: 1; font-family: monospace; font-size: 1.5rem; font-weight: 600; letter-spacing: 0.1em; color: #fff; background: #111; border: 0.5px solid #444; border-radius: 8px; padding: 0.6rem 1rem; }
+  .id-box { flex: 1; font-family: monospace; font-size: 1.5rem; font-weight: 600; letter-spacing: 0.1em; color: #fff; background: #111; border: 0.5px solid #444; border-radius: 8px; padding: 0.6rem 1rem; word-break: break-all; }
   .copy-btn { background: #2a2a2a; border: 0.5px solid #444; color: #ccc; border-radius: 8px; padding: 0.6rem 1rem; cursor: pointer; font-size: 0.9rem; white-space: nowrap; transition: background 0.15s; }
   .copy-btn:hover { background: #333; }
   .copy-btn.copied { color: #4ade80; border-color: #4ade80; }
-
   .hint { margin-top: 0.75rem; font-size: 0.85rem; color: #666; }
-
   .status-row { display: flex; align-items: center; gap: 0.5rem; margin-top: 1rem; }
-  .dot { width: 8px; height: 8px; border-radius: 50%; background: #555; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: #555; flex-shrink: 0; }
   .dot.connecting { background: #f59e0b; animation: pulse 1s infinite; }
   .dot.live { background: #4ade80; }
   .dot.error { background: #f87171; }
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
   .status-text { font-size: 0.85rem; color: #888; }
-
   .viewers { margin-left: auto; font-size: 0.85rem; color: #888; }
-
   .start-btn { width: 100%; max-width: 680px; margin-top: 1.5rem; padding: 0.9rem; background: #fff; color: #000; border: none; border-radius: 10px; font-size: 1rem; font-weight: 500; cursor: pointer; transition: opacity 0.15s; }
   .start-btn:hover { opacity: 0.88; }
   .start-btn:disabled { opacity: 0.3; cursor: default; }
@@ -45,7 +38,6 @@
 <p class="sub">Трансляция камеры и микрофона через P2P</p>
 
 <video id="preview" autoplay muted playsinline></video>
-
 <button class="start-btn" id="startBtn">Запустить трансляцию</button>
 
 <div class="card" id="idCard" style="display:none">
@@ -55,7 +47,6 @@
     <button class="copy-btn" id="copyBtn" onclick="copyId()">Копировать</button>
   </div>
   <p class="hint">Откройте viewer.html на другом устройстве и введите этот ID</p>
-
   <div class="status-row">
     <div class="dot connecting" id="dot"></div>
     <span class="status-text" id="statusText">Ожидание подключения...</span>
@@ -64,18 +55,32 @@
 </div>
 
 <script>
+const TURN_USER = "5fe3171753dfca6aad62503d";
+const TURN_PASS = "DyS/3517JISnfAsG";
+
+const ICE_SERVERS = [
+  { urls: "stun:stun.relay.metered.ca:80" },
+  { urls: "turn:standard.relay.metered.ca:80",                  username: TURN_USER, credential: TURN_PASS },
+  { urls: "turn:standard.relay.metered.ca:80?transport=tcp",    username: TURN_USER, credential: TURN_PASS },
+  { urls: "turn:standard.relay.metered.ca:443",                 username: TURN_USER, credential: TURN_PASS },
+  { urls: "turns:standard.relay.metered.ca:443?transport=tcp",  username: TURN_USER, credential: TURN_PASS },
+];
+
+const PEER_CONFIG = {
+  host: "0.peerjs.com", port: 443, secure: true, path: "/",
+  config: { iceServers: ICE_SERVERS, iceTransportPolicy: "all" }
+};
+
 let peer, stream, viewers = 0;
 
 document.getElementById('startBtn').addEventListener('click', async () => {
   const btn = document.getElementById('startBtn');
   btn.disabled = true;
   btn.textContent = 'Запрос доступа к камере...';
-
   try {
     stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
     document.getElementById('preview').srcObject = stream;
-
-    btn.textContent = 'Подключение к серверу...';
+    btn.textContent = 'Подключение...';
     initPeer();
   } catch(e) {
     btn.disabled = false;
@@ -85,56 +90,34 @@ document.getElementById('startBtn').addEventListener('click', async () => {
 });
 
 function initPeer() {
-  peer = new Peer({ debug: 0 });
-
+  peer = new Peer(PEER_CONFIG);
   peer.on('open', id => {
     document.getElementById('startBtn').style.display = 'none';
     document.getElementById('idCard').style.display = 'block';
     document.getElementById('peerId').textContent = id;
     setStatus('connecting', 'Ожидание подключения...');
   });
-
   peer.on('call', call => {
     call.answer(stream);
     viewers++;
     updateViewers();
     setStatus('live', 'В эфире');
-
-    call.on('close', () => {
-      viewers = Math.max(0, viewers - 1);
-      updateViewers();
-      if (viewers === 0) setStatus('connecting', 'Ожидание подключения...');
-    });
-
-    call.on('error', () => {
-      viewers = Math.max(0, viewers - 1);
-      updateViewers();
-    });
+    call.on('close', () => { viewers = Math.max(0, viewers-1); updateViewers(); if (!viewers) setStatus('connecting', 'Ожидание подключения...'); });
+    call.on('error', () => { viewers = Math.max(0, viewers-1); updateViewers(); });
   });
-
-  peer.on('error', e => {
-    setStatus('error', 'Ошибка: ' + e.type);
-  });
-
-  peer.on('disconnected', () => {
-    setStatus('error', 'Соединение потеряно — перезагрузите страницу');
-  });
+  peer.on('error', e => setStatus('error', 'Ошибка: ' + e.type));
+  peer.on('disconnected', () => setStatus('error', 'Соединение потеряно — перезагрузите страницу'));
 }
 
 function setStatus(state, text) {
-  const dot = document.getElementById('dot');
-  dot.className = 'dot ' + state;
+  document.getElementById('dot').className = 'dot ' + state;
   document.getElementById('statusText').textContent = text;
 }
-
 function updateViewers() {
-  const el = document.getElementById('viewerCount');
-  el.textContent = viewers > 0 ? `${viewers} зритель${viewers > 1 ? 'я' : ''}` : '';
+  document.getElementById('viewerCount').textContent = viewers > 0 ? `${viewers} зритель${viewers > 1 ? 'я' : ''}` : '';
 }
-
 function copyId() {
-  const id = document.getElementById('peerId').textContent;
-  navigator.clipboard.writeText(id).then(() => {
+  navigator.clipboard.writeText(document.getElementById('peerId').textContent).then(() => {
     const btn = document.getElementById('copyBtn');
     btn.textContent = 'Скопировано!';
     btn.classList.add('copied');

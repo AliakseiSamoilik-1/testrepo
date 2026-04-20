@@ -10,31 +10,25 @@
   body { font-family: system-ui, sans-serif; background: #0f0f0f; color: #fff; min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 2rem 1rem; }
   h1 { font-size: 1.4rem; font-weight: 500; margin-bottom: 0.4rem; }
   .sub { color: #888; font-size: 0.9rem; margin-bottom: 2rem; }
-
   .connect-card { background: #1a1a1a; border: 0.5px solid #333; border-radius: 12px; padding: 1.5rem; width: 100%; max-width: 480px; }
   .connect-card label { font-size: 0.8rem; color: #888; text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 0.5rem; }
-  .id-input { width: 100%; font-family: monospace; font-size: 1.4rem; font-weight: 600; letter-spacing: 0.1em; color: #fff; background: #111; border: 0.5px solid #444; border-radius: 8px; padding: 0.65rem 1rem; outline: none; text-transform: uppercase; }
+  .id-input { width: 100%; font-family: monospace; font-size: 1.3rem; font-weight: 600; letter-spacing: 0.05em; color: #fff; background: #111; border: 0.5px solid #444; border-radius: 8px; padding: 0.65rem 1rem; outline: none; }
   .id-input:focus { border-color: #777; }
   .connect-btn { width: 100%; margin-top: 1rem; padding: 0.85rem; background: #fff; color: #000; border: none; border-radius: 10px; font-size: 1rem; font-weight: 500; cursor: pointer; transition: opacity 0.15s; }
   .connect-btn:hover { opacity: 0.88; }
   .connect-btn:disabled { opacity: 0.3; cursor: default; }
   .hint { margin-top: 0.75rem; font-size: 0.82rem; color: #555; text-align: center; }
-
-  video { width: 100%; max-width: 680px; aspect-ratio: 16/9; background: #1a1a1a; border-radius: 12px; object-fit: cover; display: none; }
-
+  video { width: 100%; max-width: 680px; aspect-ratio: 16/9; background: #1a1a1a; border-radius: 12px; object-fit: cover; display: none; margin-top: 1.5rem; }
   .status-bar { display: none; width: 100%; max-width: 680px; margin-top: 1rem; }
   .status-inner { display: flex; align-items: center; gap: 0.5rem; background: #1a1a1a; border: 0.5px solid #333; border-radius: 8px; padding: 0.6rem 1rem; }
   .dot { width: 8px; height: 8px; border-radius: 50%; background: #555; flex-shrink: 0; }
   .dot.connecting { background: #f59e0b; animation: pulse 1s infinite; }
-  .dot.live { background: #f87171; }
+  .dot.live { background: #4ade80; }
   .dot.error { background: #f87171; }
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
   .status-text { font-size: 0.85rem; color: #aaa; }
   .disconnect-btn { margin-left: auto; background: transparent; border: 0.5px solid #444; color: #888; border-radius: 6px; padding: 0.3rem 0.7rem; font-size: 0.8rem; cursor: pointer; }
   .disconnect-btn:hover { border-color: #666; color: #ccc; }
-
-  .live-badge { display: none; position: relative; }
-  .live-badge span { background: #ef4444; color: #fff; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.05em; padding: 0.2rem 0.55rem; border-radius: 4px; }
 </style>
 </head>
 <body>
@@ -44,7 +38,7 @@
 
 <div class="connect-card" id="connectCard">
   <label>ID стримера</label>
-  <input class="id-input" id="idInput" type="text" placeholder="XXXX-XXXX" maxlength="36" autocomplete="off" spellcheck="false" />
+  <input class="id-input" id="idInput" type="text" placeholder="Вставьте ID стримера" autocomplete="off" spellcheck="false" />
   <button class="connect-btn" id="connectBtn">Подключиться</button>
   <p class="hint">Введите ID из окна стримера</p>
 </div>
@@ -55,17 +49,30 @@
   <div class="status-inner">
     <div class="dot connecting" id="dot"></div>
     <span class="status-text" id="statusText">Подключение...</span>
-    <button class="disconnect-btn" id="disconnectBtn" onclick="disconnect()">Отключиться</button>
+    <button class="disconnect-btn" onclick="disconnect()">Отключиться</button>
   </div>
 </div>
 
 <script>
+const TURN_USER = "5fe3171753dfca6aad62503d";
+const TURN_PASS = "DyS/3517JISnfAsG";
+
+const ICE_SERVERS = [
+  { urls: "stun:stun.relay.metered.ca:80" },
+  { urls: "turn:standard.relay.metered.ca:80",                  username: TURN_USER, credential: TURN_PASS },
+  { urls: "turn:standard.relay.metered.ca:80?transport=tcp",    username: TURN_USER, credential: TURN_PASS },
+  { urls: "turn:standard.relay.metered.ca:443",                 username: TURN_USER, credential: TURN_PASS },
+  { urls: "turns:standard.relay.metered.ca:443?transport=tcp",  username: TURN_USER, credential: TURN_PASS },
+];
+
+const PEER_CONFIG = {
+  host: "0.peerjs.com", port: 443, secure: true, path: "/",
+  config: { iceServers: ICE_SERVERS, iceTransportPolicy: "all" }
+};
+
 let peer, currentCall;
 
-document.getElementById('idInput').addEventListener('keydown', e => {
-  if (e.key === 'Enter') connect();
-});
-
+document.getElementById('idInput').addEventListener('keydown', e => { if (e.key === 'Enter') connect(); });
 document.getElementById('connectBtn').addEventListener('click', connect);
 
 function connect() {
@@ -76,14 +83,20 @@ function connect() {
   btn.disabled = true;
   btn.textContent = 'Подключение...';
 
-  peer = new Peer({ debug: 0 });
+  peer = new Peer(PEER_CONFIG);
 
-  peer.on('open', myId => {
-    setStatus('connecting', 'Вызов стримера...');
+  peer.on('open', () => {
     document.getElementById('connectCard').style.display = 'none';
     document.getElementById('statusBar').style.display = 'block';
+    setStatus('connecting', 'Вызов стримера...');
 
-    currentCall = peer.call(id, getFakeStream());
+    const fakeStream = (() => {
+      const c = document.createElement('canvas');
+      c.width = 1; c.height = 1;
+      return c.captureStream(1);
+    })();
+
+    currentCall = peer.call(id, fakeStream);
 
     currentCall.on('stream', remoteStream => {
       const video = document.getElementById('remoteVideo');
@@ -97,15 +110,11 @@ function connect() {
       document.getElementById('remoteVideo').style.display = 'none';
     });
 
-    currentCall.on('error', e => {
-      setStatus('error', 'Ошибка соединения');
-    });
+    currentCall.on('error', () => setStatus('error', 'Ошибка соединения'));
   });
 
   peer.on('error', e => {
-    setStatus('error', e.type === 'peer-unavailable'
-      ? 'Стример не найден — проверьте ID'
-      : 'Ошибка: ' + e.type);
+    setStatus('error', e.type === 'peer-unavailable' ? 'Стример не найден — проверьте ID' : 'Ошибка: ' + e.type);
     btn.disabled = false;
     btn.textContent = 'Подключиться';
     document.getElementById('connectCard').style.display = 'block';
@@ -124,15 +133,8 @@ function disconnect() {
   document.getElementById('connectBtn').textContent = 'Подключиться';
 }
 
-function getFakeStream() {
-  const canvas = document.createElement('canvas');
-  canvas.width = 1; canvas.height = 1;
-  return canvas.captureStream(1);
-}
-
 function setStatus(state, text) {
-  const dot = document.getElementById('dot');
-  dot.className = 'dot ' + state;
+  document.getElementById('dot').className = 'dot ' + state;
   document.getElementById('statusText').textContent = text;
 }
 </script>
