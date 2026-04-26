@@ -103,7 +103,7 @@
     }
 
     .log-entry .ts  { color: #555; margin-right: 8px; }
-    .log-entry .xy  { color: #eee; }
+    .log-entry .xy  { color: #eee; margin-right: 16px; }
   </style>
 </head>
 <body>
@@ -168,30 +168,39 @@
     ws.onerror = () => setStatus('Error', 'disconnected');
 
     ws.onmessage = e => {
+      const rxTime = Date.now();
       const text = e.data instanceof ArrayBuffer
         ? new TextDecoder().decode(new Uint8Array(e.data))
         : e.data;
       const parts = text.split(';');
-      const x = parseInt(parts[0], 10);
-      const y = parseInt(parts[1], 10);
+      const x   = parseInt(parts[0], 10);
+      const y   = parseInt(parts[1], 10);
+      const txTime = parseInt(parts[2], 10);
       if (!isNaN(x) && !isNaN(y)) {
         dispX.textContent = x;
         dispY.textContent = y;
-        appendLog(x, y);
+        const delay = (!isNaN(txTime)) ? rxTime - txTime : null;
+        appendLog(x, y, txTime, rxTime, delay);
       } else {
         console.warn('Unexpected message', text);
       }
     };
   }
 
-  function appendLog(x, y) {
-    const now = new Date();
-    const ts = now.toTimeString().slice(0, 8) + '.' + String(now.getMilliseconds()).padStart(3, '0');
+  function fmtTime(ms) {
+    const d = new Date(ms);
+    return d.toTimeString().slice(0, 8) + '.' + String(d.getMilliseconds()).padStart(3, '0');
+  }
+
+  function appendLog(x, y, txTime, rxTime, delay) {
     const entry = document.createElement('div');
     entry.className = 'log-entry';
-    entry.innerHTML = `<span class="ts">${ts}</span><span class="xy">X=${x}  Y=${y}</span>`;
+    const delayStr = delay !== null ? `${delay} ms` : '—';
+    entry.innerHTML =
+      `<span class="ts">rx ${fmtTime(rxTime)}</span>` +
+      `<span class="xy">X=${x}  Y=${y}</span>` +
+      `<span class="ts">  tx ${fmtTime(txTime)}  delay ${delayStr}</span>`;
     logEl.prepend(entry);
-    // trim old entries
     while (logEl.children.length > MAX_LOG) logEl.lastElementChild.remove();
   }
 

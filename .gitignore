@@ -3441,3 +3441,5 @@
 /ws_server/node_modules/tslib/tslib.html
 /ws_server/node_modules/tslib/tslib.js
 /ws_server/node_modules/.package-lock.json
+/ws_server/handler.zip
+/ws_server/dynamo-create.cmd.bak

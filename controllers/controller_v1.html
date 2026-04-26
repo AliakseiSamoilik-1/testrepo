@@ -603,7 +603,7 @@
     const rx = (now < xBlockedUntil) ? neutral : Math.round(applyDeadZone(valX));
     const ry = (now < yBlockedUntil) ? neutral : Math.round(applyDeadZone(valY));
     if (rx === lastSentX && ry === lastSentY && now - lastSentTime < 3000) return;
-    ws.send(`${rx};${ry};`);
+    ws.send(`${rx};${ry};${Date.now()};`);
     lastSentX = rx; lastSentY = ry; lastSentTime = now;
   }
 
