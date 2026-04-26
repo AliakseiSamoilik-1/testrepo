@@ -188,6 +188,7 @@
   }
 
   function fmtTime(ms) {
+    if (isNaN(ms)) return '—';
     const d = new Date(ms);
     return d.toTimeString().slice(0, 8) + '.' + String(d.getMilliseconds()).padStart(3, '0');
   }
