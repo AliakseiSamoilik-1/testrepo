@@ -111,6 +111,11 @@
 <div id="top-bar">
   <span class="bar-label">WS:</span>
   <input id="ip-input" class="bar-input" type="text" value="wss://<api-id>.execute-api.us-east-1.amazonaws.com/dev" placeholder="wss://…">
+  <select id="ws-select" class="bar-input" title="Saved addresses">
+    <option value="" disabled selected>Saved…</option>
+  </select>
+  <button id="btn-save">Save</button>
+  <button id="btn-del">Del</button>
   <span class="bar-label">Room:</span>
   <input id="room-input" class="bar-input" type="text" value="tank1" placeholder="room id">
   <button id="btn-connect">Connect</button>
@@ -212,6 +217,51 @@
   document.getElementById('btn-clear').addEventListener('click', () => {
     logEl.innerHTML = '';
   });
+
+  // ── Saved WS addresses ─────────────────────────────────────────────────────
+  const wsSelect  = document.getElementById('ws-select');
+  const STORE_KEY = 'tank_test_ws_addresses_v1';
+
+  function loadAddresses() {
+    try { return JSON.parse(localStorage.getItem(STORE_KEY)) || []; }
+    catch { return []; }
+  }
+
+  function saveAddresses(list) {
+    localStorage.setItem(STORE_KEY, JSON.stringify(list));
+  }
+
+  function refreshSelect() {
+    wsSelect.innerHTML = '<option value="" disabled>Saved…</option>';
+    for (const addr of loadAddresses()) {
+      const opt = document.createElement('option');
+      opt.value = opt.textContent = addr;
+      wsSelect.appendChild(opt);
+    }
+    wsSelect.value = '';
+  }
+
+  wsSelect.addEventListener('change', () => {
+    if (wsSelect.value) ipInput.value = wsSelect.value;
+  });
+
+  document.getElementById('btn-save').addEventListener('click', () => {
+    const addr = ipInput.value.trim();
+    if (!addr) return;
+    const list = loadAddresses().filter(a => a !== addr);
+    list.unshift(addr);
+    saveAddresses(list.slice(0, 20));
+    refreshSelect();
+  });
+
+  document.getElementById('btn-del').addEventListener('click', () => {
+    const addr = wsSelect.value || ipInput.value.trim();
+    if (!addr) return;
+    saveAddresses(loadAddresses().filter(a => a !== addr));
+    refreshSelect();
+  });
+
+  refreshSelect();
 </script>
 </body>
 </html>
