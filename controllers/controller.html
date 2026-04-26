@@ -256,7 +256,7 @@
   <!-- Send rate + status (always visible) -->
   <div class="bar-group">
     <span class="bar-label collapsible">Hz:</span>
-    <input id="hz-input" class="bar-input collapsible" type="number" value="20" min="1" max="100">
+    <input id="hz-input" class="bar-input collapsible" type="number" value="5" min="1" max="100">
     <div id="status" class="disconnected">Disconnected</div>
   </div>
 </div>
@@ -341,7 +341,7 @@
 
   // ── State ──────────────────────────────────────────────────────────────────
   let valX = cfg().neutral, valY = cfg().neutral;
-  let lastSentX = -1, lastSentY = -1;
+  let lastSentX = -1, lastSentY = -1, lastSentTime = 0;
   let ws = null;
   let sendInterval = null;
 
@@ -591,7 +591,7 @@
     const now = Date.now();
     const rx = (now < xBlockedUntil) ? neutral : Math.round(applyDeadZone(valX));
     const ry = (now < yBlockedUntil) ? neutral : Math.round(applyDeadZone(valY));
-    if (rx === lastSentX && ry === lastSentY) return;
+    if (rx === lastSentX && ry === lastSentY && Date.now() - lastSentTime < 1000) return;
     const buf  = new ArrayBuffer(4);
     const view = new DataView(buf);
     view.setUint16(0, rx, true); // little-endian
@@ -599,6 +599,7 @@
     ws.send(buf);
     lastSentX = rx;
     lastSentY = ry;
+    lastSentTime = Date.now();
   }
 
   function startSendLoop() {
