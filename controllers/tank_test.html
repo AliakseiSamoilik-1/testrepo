@@ -177,6 +177,7 @@
       const text = e.data instanceof ArrayBuffer
         ? new TextDecoder().decode(new Uint8Array(e.data))
         : e.data;
+      console.log('[WS] raw:', JSON.stringify(text));
       const parts = text.split(';');
       const x   = parseInt(parts[0], 10);
       const y   = parseInt(parts[1], 10);
