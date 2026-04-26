@@ -168,15 +168,18 @@
     ws.onerror = () => setStatus('Error', 'disconnected');
 
     ws.onmessage = e => {
-      if (e.data instanceof ArrayBuffer && e.data.byteLength === 4) {
-        const view = new DataView(e.data);
-        const x = view.getUint16(0, true);
-        const y = view.getUint16(2, true);
+      const text = e.data instanceof ArrayBuffer
+        ? new TextDecoder().decode(new Uint8Array(e.data))
+        : e.data;
+      const parts = text.split(';');
+      const x = parseInt(parts[0], 10);
+      const y = parseInt(parts[1], 10);
+      if (!isNaN(x) && !isNaN(y)) {
         dispX.textContent = x;
         dispY.textContent = y;
         appendLog(x, y);
       } else {
-        console.warn('Unexpected message', e.data);
+        console.warn('Unexpected message', text);
       }
     };
   }
