@@ -177,12 +177,14 @@
       const text = e.data instanceof ArrayBuffer
         ? new TextDecoder().decode(new Uint8Array(e.data))
         : e.data;
+      console.log('Text:', text);
       console.log('[WS] raw:', JSON.stringify(text));
-      console.log('rxTime - '  + rxTime);
       const parts = text.split(';');
       const x   = parseInt(parts[0], 10);
       const y   = parseInt(parts[1], 10);
       const txTime = parseInt(parts[2], 10);
+      console.log('rxTime - '  + rxTime);
+      console.log('txTime - '  + txTime);
       if (!isNaN(x) && !isNaN(y)) {
         dispX.textContent = x;
         dispY.textContent = y;
