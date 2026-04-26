@@ -5,15 +5,18 @@ const { ApiGatewayManagementApiClient, PostToConnectionCommand, GoneException } 
 const dynamo = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 const TABLE = process.env.TABLE_NAME;
 
-doesexports.handler = async (event) => {
+exports.handler = async (event) => {
   const { connectionId, routeKey, domainName, stage } = event.requestContext;
+  console.log('[handler]', routeKey, connectionId);
 
   if (routeKey === '$connect') {
     const params = event.queryStringParameters || {};
     const role = params.role;
     const room = params.room || 'default';
+    console.log('[connect] role:', role, '| room:', room);
 
     if (role !== 'car' && role !== 'controller') {
+      console.warn('[connect] rejected — invalid role:', role);
       return { statusCode: 400, body: 'Query param role must be "car" or "controller"' };
     }
 
@@ -26,11 +29,13 @@ doesexports.handler = async (event) => {
         ttl: Math.floor(Date.now() / 1000) + 86400,
       },
     }));
+    console.log('[connect] saved to DynamoDB — table:', TABLE);
 
     return { statusCode: 200, body: 'Connected' };
   }
 
   if (routeKey === '$disconnect') {
+    console.log('[disconnect]', connectionId);
     await dynamo.send(new DeleteCommand({
       TableName: TABLE,
       Key: { connectionId },
@@ -39,14 +44,24 @@ doesexports.handler = async (event) => {
   }
 
   // $default — controller sends binary, forward to all cars in the same room
+  console.log('[default] fetching connection record...');
   const { Item: conn } = await dynamo.send(new GetCommand({
     TableName: TABLE,
     Key: { connectionId },
   }));
 
-  if (!conn) return { statusCode: 410, body: 'Unknown connection' };
-  if (conn.role !== 'controller') return { statusCode: 403, body: 'Only controllers may send messages' };
+  if (!conn) {
+    console.warn('[default] unknown connectionId:', connectionId);
+    return { statusCode: 410, body: 'Unknown connection' };
+  }
+  console.log('[default] connection record:', JSON.stringify(conn));
 
+  if (conn.role !== 'controller') {
+    console.warn('[default] rejected — role is not controller:', conn.role);
+    return { statusCode: 403, body: 'Only controllers may send messages' };
+  }
+
+  console.log('[default] querying cars in room:', conn.room);
   const { Items: cars = [] } = await dynamo.send(new QueryCommand({
     TableName: TABLE,
     IndexName: 'RoomRoleIndex',
@@ -54,10 +69,10 @@ doesexports.handler = async (event) => {
     ExpressionAttributeNames: { '#room': 'room', '#role': 'role' },
     ExpressionAttributeValues: { ':room': conn.room, ':role': 'car' },
   }));
+  console.log('[default] cars found:', cars.length);
 
   if (cars.length === 0) return { statusCode: 200, body: 'No cars connected' };
 
-  // Body is base64-encoded binary when isBase64Encoded is true, raw string otherwise.
   const data = event.isBase64Encoded
     ? Buffer.from(event.body, 'base64')
     : Buffer.from(event.body);
@@ -67,14 +82,18 @@ doesexports.handler = async (event) => {
   });
 
   await Promise.all(
-    cars.map(car =>
-      apigw.send(new PostToConnectionCommand({ ConnectionId: car.connectionId, Data: data }))
+    cars.map(car => {
+      console.log('[default] sending to car:', car.connectionId);
+      return apigw.send(new PostToConnectionCommand({ ConnectionId: car.connectionId, Data: data }))
         .catch(err => {
-          // Stale connection — ignore; TTL will clean DynamoDB up
-          if (err instanceof GoneException) return;
+          if (err instanceof GoneException) {
+            console.warn('[default] stale car connection:', car.connectionId);
+            return;
+          }
+          console.error('[default] PostToConnection error:', err);
           throw err;
-        })
-    )
+        });
+    })
   );
 
   return { statusCode: 200, body: 'OK' };
