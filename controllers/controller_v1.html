@@ -589,10 +589,10 @@
     setStatus('Connecting…', '');
     ws = new WebSocket(buildUrl());
     ws.binaryType = 'arraybuffer';
-    ws.onopen  = () => { setStatus('Connected', 'connected'); startSendLoop(); };
-    ws.onclose = () => { setStatus('Disconnected', 'disconnected'); stopSendLoop(); };
-    ws.onerror = () => setStatus('Error', 'disconnected');
-    ws.onmessage = e => console.log('Server:', e.data);
+    ws.onopen  = () => { console.log('[WS] Connected:', buildUrl()); setStatus('Connected', 'connected'); startSendLoop(); };
+    ws.onclose = e  => { console.warn('[WS] Closed — code:', e.code, '| reason:', e.reason || '(none)', '| clean:', e.wasClean); setStatus('Disconnected', 'disconnected'); stopSendLoop(); };
+    ws.onerror = e  => { console.error('[WS] Error:', e); setStatus('Error', 'disconnected'); };
+    ws.onmessage = e => console.log('[WS] Message:', e.data);
   }
 
   function sendData() {
