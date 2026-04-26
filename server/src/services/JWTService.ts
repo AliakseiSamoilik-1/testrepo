@@ -11,7 +11,6 @@ export interface ServiceAccount {
 export class JWTService {
   private static readonly filePath = './jwt-private-key.json';
   private readonly serviceAccount: ServiceAccount;
-  private static readonly scope: string = "https://www.googleapis.com/auth/spreadsheets";
 
   constructor() {
     try {
@@ -42,11 +41,11 @@ export class JWTService {
     };
   }
 
-  generateJWT(): string {
+  generateJWT(scope: string): string {
     const now = Math.floor(Date.now() / 1000);
     const payload = {
       iss: this.serviceAccount.client_email,
-      scope: JWTService.scope,
+      scope,
       aud: 'https://oauth2.googleapis.com/token',
       iat: now,
       exp: now + 3600,
