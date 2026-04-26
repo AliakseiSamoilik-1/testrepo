@@ -5,6 +5,9 @@ const { ApiGatewayManagementApiClient, PostToConnectionCommand, GoneException } 
 const dynamo = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 const TABLE = process.env.TABLE_NAME;
 
+// Module-level cache survives across warm Lambda invocations
+const connCache = new Map();
+
 exports.handler = async (event) => {
   const { connectionId, routeKey, domainName, stage } = event.requestContext;
   console.log('[handler]', routeKey, connectionId);
@@ -36,6 +39,7 @@ exports.handler = async (event) => {
 
   if (routeKey === '$disconnect') {
     console.log('[disconnect]', connectionId);
+    connCache.delete(connectionId);
     await dynamo.send(new DeleteCommand({
       TableName: TABLE,
       Key: { connectionId },
@@ -44,17 +48,21 @@ exports.handler = async (event) => {
   }
 
   // $default — controller sends binary, forward to all cars in the same room
-  console.log('[default] fetching connection record...');
-  const { Item: conn } = await dynamo.send(new GetCommand({
-    TableName: TABLE,
-    Key: { connectionId },
-  }));
-
+  let conn = connCache.get(connectionId);
   if (!conn) {
-    console.warn('[default] unknown connectionId:', connectionId);
-    return { statusCode: 410, body: 'Unknown connection' };
+    console.log('[default] cache miss — fetching connection record...');
+    const { Item } = await dynamo.send(new GetCommand({
+      TableName: TABLE,
+      Key: { connectionId },
+    }));
+    if (!Item) {
+      console.warn('[default] unknown connectionId:', connectionId);
+      return { statusCode: 410, body: 'Unknown connection' };
+    }
+    connCache.set(connectionId, Item);
+    conn = Item;
   }
-  console.log('[default] connection record:', JSON.stringify(conn));
+  console.log('[default] conn:', JSON.stringify(conn));
 
   if (conn.role !== 'controller') {
     console.warn('[default] rejected — role is not controller:', conn.role);
