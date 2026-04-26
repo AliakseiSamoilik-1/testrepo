@@ -1,0 +1,11 @@
+{
+  "name": "tank-ws-server",
+  "version": "1.0.0",
+  "description": "Tank controller WebSocket relay — AWS Lambda + API Gateway",
+  "main": "handler.js",
+  "dependencies": {
+    "@aws-sdk/client-apigatewaymanagementapi": "^3",
+    "@aws-sdk/client-dynamodb": "^3",
+    "@aws-sdk/lib-dynamodb": "^3"
+  }
+}

@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tank Test Receiver</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #1a1a2e;
+      color: #eee;
+      font-family: monospace;
+      display: flex;
+      flex-direction: column;
+      height: 100dvh;
+      overflow: hidden;
+    }
+
+    #top-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      background: #16213e;
+      flex-shrink: 0;
+      flex-wrap: wrap;
+    }
+
+    .bar-label { font-size: 12px; opacity: 0.8; white-space: nowrap; }
+
+    .bar-input {
+      background: #0f3460;
+      border: 1px solid #555;
+      color: #eee;
+      padding: 4px 6px;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 13px;
+    }
+
+    #ip-input   { width: 220px; }
+    #room-input { width: 80px; }
+
+    button {
+      background: #0f3460;
+      border: 1px solid #555;
+      color: #eee;
+      padding: 4px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-family: monospace;
+      font-size: 13px;
+    }
+    button:active { background: #1a5a9a; }
+
+    #status {
+      font-size: 13px;
+      padding: 4px 10px;
+      border-radius: 4px;
+      background: #444;
+      white-space: nowrap;
+    }
+    #status.connected    { background: #2a7a2a; }
+    #status.disconnected { background: #7a2a2a; }
+
+    #values {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 60px;
+      padding: 24px;
+      flex-shrink: 0;
+    }
+
+    .val-block { text-align: center; }
+    .val-label { font-size: 13px; opacity: 0.7; margin-bottom: 6px; }
+    .val-number {
+      font-size: 56px;
+      font-weight: bold;
+      color: #f5a623;
+      min-width: 100px;
+    }
+
+    #log-wrap {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px 16px;
+      min-height: 0;
+    }
+
+    #log {
+      display: flex;
+      flex-direction: column-reverse;
+      gap: 2px;
+    }
+
+    .log-entry {
+      font-size: 12px;
+      color: #aaa;
+      border-bottom: 1px solid #ffffff0f;
+      padding: 2px 0;
+    }
+
+    .log-entry .ts  { color: #555; margin-right: 8px; }
+    .log-entry .xy  { color: #eee; }
+  </style>
+</head>
+<body>
+
+<div id="top-bar">
+  <span class="bar-label">WS:</span>
+  <input id="ip-input" class="bar-input" type="text" value="wss://<api-id>.execute-api.us-east-1.amazonaws.com/dev" placeholder="wss://…">
+  <span class="bar-label">Room:</span>
+  <input id="room-input" class="bar-input" type="text" value="tank1" placeholder="room id">
+  <button id="btn-connect">Connect</button>
+  <button id="btn-disconnect">Disconnect</button>
+  <button id="btn-clear">Clear log</button>
+  <div id="status" class="disconnected">Disconnected</div>
+</div>
+
+<div id="values">
+  <div class="val-block">
+    <div class="val-label">X (left track)</div>
+    <div class="val-number" id="disp-x">—</div>
+  </div>
+  <div class="val-block">
+    <div class="val-label">Y (right track)</div>
+    <div class="val-number" id="disp-y">—</div>
+  </div>
+</div>
+
+<div id="log-wrap">
+  <div id="log"></div>
+</div>
+
+<script>
+  const ipInput   = document.getElementById('ip-input');
+  const roomInput = document.getElementById('room-input');
+  const statusEl  = document.getElementById('status');
+  const dispX     = document.getElementById('disp-x');
+  const dispY     = document.getElementById('disp-y');
+  const logEl     = document.getElementById('log');
+
+  const MAX_LOG = 200;
+  let ws = null;
+
+  function setStatus(text, cls) {
+    statusEl.textContent = text;
+    statusEl.className = cls;
+  }
+
+  function buildUrl() {
+    let base = ipInput.value.trim();
+    if (!base.startsWith('ws')) base = 'wss://' + base;
+    const room = roomInput.value.trim() || 'default';
+    return `${base}?role=car&room=${encodeURIComponent(room)}`;
+  }
+
+  function connect() {
+    if (ws) { ws.close(); ws = null; }
+    setStatus('Connecting…', '');
+    ws = new WebSocket(buildUrl());
+    ws.binaryType = 'arraybuffer';
+
+    ws.onopen  = () => setStatus('Connected', 'connected');
+    ws.onclose = () => setStatus('Disconnected', 'disconnected');
+    ws.onerror = () => setStatus('Error', 'disconnected');
+
+    ws.onmessage = e => {
+      if (e.data instanceof ArrayBuffer && e.data.byteLength === 4) {
+        const view = new DataView(e.data);
+        const x = view.getUint16(0, true);
+        const y = view.getUint16(2, true);
+        dispX.textContent = x;
+        dispY.textContent = y;
+        appendLog(x, y);
+      } else {
+        console.warn('Unexpected message', e.data);
+      }
+    };
+  }
+
+  function appendLog(x, y) {
+    const now = new Date();
+    const ts = now.toTimeString().slice(0, 8) + '.' + String(now.getMilliseconds()).padStart(3, '0');
+    const entry = document.createElement('div');
+    entry.className = 'log-entry';
+    entry.innerHTML = `<span class="ts">${ts}</span><span class="xy">X=${x}  Y=${y}</span>`;
+    logEl.prepend(entry);
+    // trim old entries
+    while (logEl.children.length > MAX_LOG) logEl.lastElementChild.remove();
+  }
+
+  document.getElementById('btn-connect').addEventListener('click', connect);
+  document.getElementById('btn-disconnect').addEventListener('click', () => {
+    if (ws) { ws.close(); ws = null; }
+  });
+  document.getElementById('btn-clear').addEventListener('click', () => {
+    logEl.innerHTML = '';
+  });
+</script>
+</body>
+</html>
