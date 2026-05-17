@@ -253,6 +253,14 @@
     <span class="bar-label">ms</span>
   </div>
 
+  <!-- Sync sliders -->
+  <div class="bar-group collapsible">
+    <label style="display:flex;align-items:center;gap:5px;cursor:pointer">
+      <input id="sync-check" type="checkbox">
+      <span class="bar-label">Sync</span>
+    </label>
+  </div>
+
   <!-- Send rate + status (always visible) -->
   <div class="bar-group">
     <span class="bar-label collapsible">Hz:</span>
@@ -340,6 +348,8 @@
   maxInput.addEventListener('change', onRangeChange);
 
   // ── State ──────────────────────────────────────────────────────────────────
+  const syncCheck = document.getElementById('sync-check');
+  let syncing = false;
   let valX = cfg().neutral, valY = cfg().neutral;
   let lastSentX = -1, lastSentY = -1, lastSentTime = 0;
   let ws = null;
@@ -367,13 +377,15 @@
 
   function applyJoy() {
     const c = cfg(), half = (c.max - c.min) / 2;
-    setX(Math.round(Math.max(c.min, Math.min(c.max, c.neutral + (joyY_norm + joyX_norm) * half))));
-    setY(Math.round(Math.max(c.min, Math.min(c.max, c.neutral + (joyY_norm - joyX_norm) * half))));
+    const xNorm = syncCheck.checked ? 0 : joyX_norm;
+    setX(Math.round(Math.max(c.min, Math.min(c.max, c.neutral + (joyY_norm + xNorm) * half))), false);
+    setY(Math.round(Math.max(c.min, Math.min(c.max, c.neutral + (joyY_norm - xNorm) * half))), false);
   }
 
   function updateJoyThumb() {
     const padW = joyPad.clientWidth, padH = joyPad.clientHeight;
-    joyThumb.style.left = ((joyX_norm  * 0.5 + 0.5) * padW) + 'px';
+    const xNorm = syncCheck.checked ? 0 : joyX_norm;
+    joyThumb.style.left = ((xNorm      * 0.5 + 0.5) * padW) + 'px';
     joyThumb.style.top  = ((-joyY_norm * 0.5 + 0.5) * padH) + 'px';
   }
 
@@ -473,22 +485,24 @@
   document.addEventListener('touchend',   handleTouchEnd,   { passive: false });
   document.addEventListener('touchcancel',handleTouchEnd,   { passive: false });
 
-  function setX(v) {
+  function setX(v, applySync = true) {
     const side = getSide(v, cfg().neutral);
     if (side !== 0 && prevSideX !== 0 && side !== prevSideX) {
       xBlockedUntil = Date.now() + Number(blockInput.value);
     }
     if (side !== 0) prevSideX = side;
     valX = v;
+    if (applySync && !syncing && syncCheck.checked) { syncing = true; setY(v, false); syncing = false; }
   }
 
-  function setY(v) {
+  function setY(v, applySync = true) {
     const side = getSide(v, cfg().neutral);
     if (side !== 0 && prevSideY !== 0 && side !== prevSideY) {
       yBlockedUntil = Date.now() + Number(blockInput.value);
     }
     if (side !== 0) prevSideY = side;
     valY = v;
+    if (applySync && !syncing && syncCheck.checked) { syncing = true; setX(v, false); syncing = false; }
   }
 
   // ── Return-to-neutral animation (rAF loop) ────────────────────────────────
