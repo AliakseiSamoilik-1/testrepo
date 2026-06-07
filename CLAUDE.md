@@ -9,7 +9,7 @@ TypeScript AWS Lambda backend that authenticates with Google API, reads Polish q
 ## Components
 
 - `server/` — Main Lambda function (Node.js 20.x, TypeScript)
-- `ws_server/` — WebSocket relay Lambda (tank controller)
+- `ws_server/` — WebSocket relay Lambda (tank controller); uses DynamoDB for connection tracking
 - `controllers/` — HTML frontend controllers for tank testing
 - `skatches/` — Arduino sketch (`tank.ino`)
 - Root HTML files — `streamer.html`, `viewer.html`
@@ -23,7 +23,16 @@ npm run build        # Clean + compile TypeScript → dist/
 npm test             # Run unit tests (test/**/*.test.ts)
 npm run test-int     # Run integration tests (test-int/**/*.test.ts)
 npm run package      # test + build + zip → build/lambda.zip
+
+# Run a single test file
+vitest run test --config vitest.config.ts <file-pattern>
+vitest run test-int --config vitest.config.int.ts <file-pattern>
 ```
+
+## Environment Variables
+
+- `JWT_PRIVATE_KEY_JSON` — JSON string of Google service account credentials (`client_email` + `private_key`); falls back to `./jwt-private-key.json`
+- `OPENAI_API_KEY` — Required by AIService for LangChain/OpenAI calls
 
 ## Architecture
 

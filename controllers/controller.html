@@ -204,6 +204,26 @@
     }
     .joy-line-h { height: 2px; left: 0; right: 0; top: 50%; transform: translateY(-50%); }
     .joy-line-v { width: 2px; top: 0; bottom: 0; left: 50%; transform: translateX(-50%); }
+
+    #fire-btn {
+      width: 100%;
+      padding: 14px 0;
+      background: #7a1a1a;
+      border: 2px solid #e94560;
+      border-radius: 10px;
+      color: #fff;
+      font-size: 18px;
+      font-weight: bold;
+      letter-spacing: 2px;
+      cursor: pointer;
+      touch-action: none;
+      user-select: none;
+      flex-shrink: 0;
+    }
+    #fire-btn.active {
+      background: #e94560;
+      box-shadow: 0 0 16px rgba(233,69,96,0.8);
+    }
   </style>
 </head>
 <body>
@@ -295,6 +315,7 @@
       <div class="joy-line joy-line-v"></div>
       <div id="joy-thumb"></div>
     </div>
+    <button id="fire-btn">FIRE</button>
   </div>
 
   <div class="slider-wrap">
@@ -360,7 +381,7 @@
   const joyHoldCheck = document.getElementById('joy-hold-check');
   let syncing = false;
   let valX = cfg().neutral, valY = cfg().neutral;
-  let lastSentX = -1, lastSentY = -1, lastSentTime = 0;
+  let lastSentX = -1, lastSentY = -1, lastSentFire = -1, lastSentTime = 0;
   let ws = null;
   let sendInterval = null;
 
@@ -377,6 +398,7 @@
   // ── Joystick state ─────────────────────────────────────────────────────────
   let joyTouchId = null, joyMouseActive = false;
   let joyX_norm = 0, joyY_norm = 0; // -1..+1
+  let fireActive = 0;
 
   function joyNormFromEvent(clientX, clientY) {
     const rect = joyPad.getBoundingClientRect();
@@ -620,14 +642,17 @@
     const now = Date.now();
     const rx = (now < xBlockedUntil) ? neutral : Math.round(applyDeadZone(valX));
     const ry = (now < yBlockedUntil) ? neutral : Math.round(applyDeadZone(valY));
-    if (rx === lastSentX && ry === lastSentY && Date.now() - lastSentTime < 1000) return;
-    const buf  = new ArrayBuffer(4);
+    const rf = fireActive;
+    if (rx === lastSentX && ry === lastSentY && rf === lastSentFire && Date.now() - lastSentTime < 1000) return;
+    const buf  = new ArrayBuffer(6);
     const view = new DataView(buf);
-    view.setUint16(0, rx, true); // little-endian
+    view.setUint16(0, rx, true);
     view.setUint16(2, ry, true);
+    view.setUint16(4, rf, true);
     ws.send(buf);
     lastSentX = rx;
     lastSentY = ry;
+    lastSentFire = rf;
     lastSentTime = Date.now();
   }
 
@@ -711,6 +736,21 @@
   applyConfigVisibility(localStorage.getItem(CONFIG_KEY) !== '0');
 
   globalThis.addEventListener('resize', renderAll);
+
+  // ── Fire button ────────────────────────────────────────────────────────────
+  const fireBtn = document.getElementById('fire-btn');
+
+  function setFire(val) {
+    fireActive = val;
+    fireBtn.classList.toggle('active', val === 1);
+  }
+
+  fireBtn.addEventListener('mousedown',  e => { setFire(1); e.preventDefault(); });
+  globalThis.addEventListener('mouseup', ()  => { setFire(0); });
+
+  fireBtn.addEventListener('touchstart', e => { setFire(1); e.preventDefault(); }, { passive: false });
+  fireBtn.addEventListener('touchend',   e => { setFire(0); e.preventDefault(); }, { passive: false });
+  fireBtn.addEventListener('touchcancel',e => { setFire(0); });
 </script>
 </body>
 </html>
