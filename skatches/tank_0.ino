@@ -45,7 +45,6 @@ Servo fireServo;
 // Fire servo cycle: 0=idle, 1=sweeping to 180°, 2=returning to 0°
 uint8_t       firePhase      = 0;
 unsigned long firePhaseStart = 0;
-bool          firePrev       = false; // edge detect: trigger only on 0→1
 void setup() {
 
   Serial.begin(115200);
@@ -109,20 +108,18 @@ void loop() {
   esc2.writeMicroseconds(y);
 
   // Fire servo: start a new cycle only on rising edge of fire, while idle
-  bool fireNow = (fire != 0);
-  if (fireNow && !firePrev && firePhase == 0) {
+  if (fire != 0 && firePhase == 0) {
     firePhase      = 1;
     firePhaseStart = millis();
     fireServo.write(180);
   }
-  firePrev = fireNow;
 
   unsigned long elapsed = millis() - firePhaseStart;
-  if (firePhase == 1 && elapsed >= 250) {
+  if (firePhase == 1 && elapsed >= 500) {
     firePhase      = 2;
     firePhaseStart = millis();
     fireServo.write(0);
-  } else if (firePhase == 2 && elapsed >= 250) {
+  } else if (firePhase == 2 && elapsed >= 500) {
     firePhase = 0;
   }
 
