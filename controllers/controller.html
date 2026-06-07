@@ -261,6 +261,14 @@
     </label>
   </div>
 
+  <!-- Joy hold -->
+  <div class="bar-group collapsible">
+    <label style="display:flex;align-items:center;gap:5px;cursor:pointer">
+      <input id="joy-hold-check" type="checkbox">
+      <span class="bar-label">Joy hold</span>
+    </label>
+  </div>
+
   <!-- Send rate + status (always visible) -->
   <div class="bar-group">
     <span class="bar-label collapsible">Hz:</span>
@@ -348,7 +356,8 @@
   maxInput.addEventListener('change', onRangeChange);
 
   // ── State ──────────────────────────────────────────────────────────────────
-  const syncCheck = document.getElementById('sync-check');
+  const syncCheck    = document.getElementById('sync-check');
+  const joyHoldCheck = document.getElementById('joy-hold-check');
   let syncing = false;
   let valX = cfg().neutral, valY = cfg().neutral;
   let lastSentX = -1, lastSentY = -1, lastSentTime = 0;
@@ -520,13 +529,19 @@
       applyJoy();
     } else {
       const normStep = c.speed === 0 ? 2 : c.speed * dt / ((c.max - c.min) / 2);
-      joyX_norm = snapTo(joyX_norm, 0, normStep);
-      joyY_norm = snapTo(joyY_norm, 0, normStep);
+      if (!joyHoldCheck.checked) {
+        joyX_norm = snapTo(joyX_norm, 0, normStep);
+        joyY_norm = snapTo(joyY_norm, 0, normStep);
+      }
 
-      const mouseOnX = mouseTarget !== null && mouseTarget.track === trackX;
-      const mouseOnY = mouseTarget !== null && mouseTarget.track === trackY;
-      if (touchIdX === null && !mouseOnX) valX = snapTo(valX, c.neutral, c.speed * dt);
-      if (touchIdY === null && !mouseOnY) valY = snapTo(valY, c.neutral, c.speed * dt);
+      if (joyHoldCheck.checked) {
+        applyJoy();
+      } else {
+        const mouseOnX = mouseTarget !== null && mouseTarget.track === trackX;
+        const mouseOnY = mouseTarget !== null && mouseTarget.track === trackY;
+        if (touchIdX === null && !mouseOnX) valX = snapTo(valX, c.neutral, c.speed * dt);
+        if (touchIdY === null && !mouseOnY) valY = snapTo(valY, c.neutral, c.speed * dt);
+      }
     }
 
     updateJoyThumb();
