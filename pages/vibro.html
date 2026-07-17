@@ -123,11 +123,16 @@
       background: #42a5f5;
     }
     .progress-fill.p2 { background: #ab47bc; }
+
+    /* Trainer config rows */
+    .phase-row { display: flex; gap: 10px; }
+    .phase-row .row { flex: 1; }
+    .phase-label { font-size: 0.8rem; color: #666; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; }
   </style>
 </head>
 <body>
   <h1>Vibro Timer</h1>
-  <div class="version">v1.7</div>
+  <div class="version">v1.8</div>
 
   <div class="tabs">
     <button class="tab-btn active" data-tab="custom">Custom</button>
@@ -151,6 +156,28 @@
 
   <!-- Trainer tab -->
   <div id="tab-trainer" class="tab-pane card">
+    <div class="phase-label">Phase 1</div>
+    <div class="phase-row">
+      <div class="row">
+        <label for="p1mins">Duration (min)</label>
+        <input type="number" id="p1mins" value="3" min="1" max="60" step="1" />
+      </div>
+      <div class="row">
+        <label for="p1bpm">Tempo (bpm)</label>
+        <input type="number" id="p1bpm" value="75" min="30" max="220" step="1" />
+      </div>
+    </div>
+    <div class="phase-label">Phase 2</div>
+    <div class="phase-row">
+      <div class="row">
+        <label for="p2mins">Duration (min)</label>
+        <input type="number" id="p2mins" value="2" min="1" max="60" step="1" />
+      </div>
+      <div class="row">
+        <label for="p2bpm">Tempo (bpm)</label>
+        <input type="number" id="p2bpm" value="66" min="30" max="220" step="1" />
+      </div>
+    </div>
     <div class="trainer-display">
       <div class="phase-name" id="phaseName">—</div>
       <div class="phase-timer" id="phaseTimer">—:——</div>
@@ -160,7 +187,7 @@
       <div class="progress-fill" id="progressFill"></div>
     </div>
     <button id="trainerBtn">Start</button>
-    <div class="status" id="trainerStatus">Stopped · 3 min @75/min → 2 min @66/min</div>
+    <div class="status" id="trainerStatus">Stopped</div>
   </div>
 
   <script>
@@ -227,12 +254,7 @@
     });
 
     // ── Trainer ──────────────────────────────────────────────────
-    const T_PHASE1   = 3 * 60 * 1000;          // 180 000 ms
-    const T_PHASE2   = 2 * 60 * 1000;          // 120 000 ms
-    const T_CYCLE    = T_PHASE1 + T_PHASE2;    // 300 000 ms
-    const BEAT1      = Math.round(60000 / 75); // 800 ms
-    const BEAT2      = Math.round(60000 / 66); // 909 ms
-    const VIB_MS     = 150;
+    const VIB_MS = 150;
 
     const trainerBtn    = document.getElementById('trainerBtn');
     const trainerStatus = document.getElementById('trainerStatus');
@@ -240,54 +262,70 @@
     const phaseTimerEl  = document.getElementById('phaseTimer');
     const cycleNumEl    = document.getElementById('cycleNum');
     const progressFill  = document.getElementById('progressFill');
+    const p1minsInput   = document.getElementById('p1mins');
+    const p1bpmInput    = document.getElementById('p1bpm');
+    const p2minsInput   = document.getElementById('p2mins');
+    const p2bpmInput    = document.getElementById('p2bpm');
+    const trainerInputs = [p1minsInput, p1bpmInput, p2minsInput, p2bpmInput];
 
     let trainerRunning = false;
-    let trainerStart   = null; // Date.now() when session began
+    let trainerStart   = null;
     let displayTimer   = null;
+    let beatTimeout    = null;
+    // Active session params (set on start, fixed for the session)
+    let tPhase1, tPhase2, tCycle, beat1, beat2;
 
-    function buildTrainerPattern(offsetMs) {
-      const pattern = [];
-      const posInCycle = offsetMs % T_CYCLE;
+    function readTrainerParams() {
+      tPhase1 = Math.max(1, parseInt(p1minsInput.value, 10) || 3) * 60000;
+      tPhase2 = Math.max(1, parseInt(p2minsInput.value, 10) || 2) * 60000;
+      tCycle  = tPhase1 + tPhase2;
+      beat1   = Math.round(60000 / (Math.max(30, parseInt(p1bpmInput.value, 10) || 75)));
+      beat2   = Math.round(60000 / (Math.max(30, parseInt(p2bpmInput.value, 10) || 66)));
+    }
 
-      function addBeats(totalMs, beatMs) {
-        const n = Math.floor(totalMs / beatMs);
-        for (let i = 0; i < n; i++) pattern.push(VIB_MS, beatMs - VIB_MS);
-      }
+    function stoppedStatusText() {
+      const m1 = parseInt(p1minsInput.value, 10) || 3;
+      const b1 = parseInt(p1bpmInput.value, 10)  || 75;
+      const m2 = parseInt(p2minsInput.value, 10) || 2;
+      const b2 = parseInt(p2bpmInput.value, 10)  || 66;
+      return `Stopped · ${m1} min @${b1}/min → ${m2} min @${b2}/min`;
+    }
 
-      // Finish the current partial phase first
-      if (posInCycle < T_PHASE1) {
-        addBeats(T_PHASE1 - posInCycle, BEAT1);
-        addBeats(T_PHASE2, BEAT2);
+    // Beat scheduler — avoids browser pattern-length limits
+    function scheduleNextBeat() {
+      if (!trainerRunning) return;
+      const posInCycle = (Date.now() - trainerStart) % tCycle;
+      let beat, timeInBeat;
+      if (posInCycle < tPhase1) {
+        beat = beat1; timeInBeat = posInCycle % beat1;
       } else {
-        addBeats(T_CYCLE - posInCycle, BEAT2);
+        beat = beat2; timeInBeat = (posInCycle - tPhase1) % beat2;
       }
-
-      // Then append 30 full cycles (~2.5 hours) so the pattern runs indefinitely
-      for (let i = 0; i < 30; i++) {
-        addBeats(T_PHASE1, BEAT1);
-        addBeats(T_PHASE2, BEAT2);
-      }
-
-      return pattern;
+      beatTimeout = setTimeout(() => {
+        if (!trainerRunning) return;
+        navigator.vibrate(VIB_MS);
+        scheduleNextBeat();
+      }, beat - timeInBeat);
     }
 
     function updateTrainerDisplay() {
       if (!trainerStart) return;
       const elapsed    = Date.now() - trainerStart;
-      const posInCycle = elapsed % T_CYCLE;
-      const cycle      = Math.floor(elapsed / T_CYCLE) + 1;
+      const posInCycle = elapsed % tCycle;
+      const cycle      = Math.floor(elapsed / tCycle) + 1;
 
       let phase, remaining, total;
-      if (posInCycle < T_PHASE1) {
-        phase = 1; remaining = T_PHASE1 - posInCycle; total = T_PHASE1;
+      if (posInCycle < tPhase1) {
+        phase = 1; remaining = tPhase1 - posInCycle; total = tPhase1;
       } else {
-        phase = 2; remaining = T_CYCLE - posInCycle; total = T_PHASE2;
+        phase = 2; remaining = tCycle - posInCycle; total = tPhase2;
       }
 
+      const bpm = phase === 1 ? parseInt(p1bpmInput.value, 10) || 75 : parseInt(p2bpmInput.value, 10) || 66;
       const mins = Math.floor(remaining / 60000);
       const secs = Math.floor((remaining % 60000) / 1000);
 
-      phaseNameEl.textContent  = phase === 1 ? 'Phase 1 · 75/min' : 'Phase 2 · 66/min';
+      phaseNameEl.textContent  = `Phase ${phase} · ${bpm}/min`;
       phaseTimerEl.textContent = `${mins}:${String(secs).padStart(2, '0')}`;
       phaseTimerEl.className   = `phase-timer p${phase}`;
       cycleNumEl.textContent   = `Cycle ${cycle}`;
@@ -302,10 +340,13 @@
     }
 
     async function startTrainer() {
+      readTrainerParams();
       trainerRunning = true;
       trainerStart   = Date.now();
+      trainerInputs.forEach(el => el.disabled = true);
       await acquireWakeLock();
-      navigator.vibrate(buildTrainerPattern(0));
+      navigator.vibrate(VIB_MS);
+      scheduleNextBeat();
       startDisplayTimer();
       trainerBtn.textContent = 'Stop';
       trainerBtn.classList.add('running');
@@ -314,21 +355,24 @@
     }
 
     function resumeTrainer() {
-      const offset = Date.now() - trainerStart;
+      clearTimeout(beatTimeout);
       acquireWakeLock();
-      navigator.vibrate(buildTrainerPattern(offset));
+      navigator.vibrate(VIB_MS);
+      scheduleNextBeat();
       startDisplayTimer();
     }
 
     function stopTrainer() {
       trainerRunning = false;
       trainerStart   = null;
+      clearTimeout(beatTimeout);
       clearInterval(displayTimer);
+      trainerInputs.forEach(el => el.disabled = false);
       releaseWakeLock();
       navigator.vibrate(0);
       trainerBtn.textContent = 'Start';
       trainerBtn.classList.remove('running');
-      trainerStatus.textContent = 'Stopped · 3 min @75/min → 2 min @66/min';
+      trainerStatus.textContent = stoppedStatusText();
       trainerStatus.classList.remove('active');
       phaseNameEl.textContent  = '—';
       phaseTimerEl.textContent = '—:——';
@@ -336,6 +380,12 @@
       cycleNumEl.textContent   = '—';
       progressFill.style.width = '0%';
     }
+
+    trainerInputs.forEach(el => el.addEventListener('change', () => {
+      trainerStatus.textContent = stoppedStatusText();
+    }));
+
+    trainerStatus.textContent = stoppedStatusText();
 
     trainerBtn.addEventListener('click', () => trainerRunning ? stopTrainer() : startTrainer());
 
