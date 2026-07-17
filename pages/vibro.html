@@ -11,30 +11,55 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
       min-height: 100svh;
       background: #111;
       color: #eee;
-      gap: 24px;
-      padding: 24px;
+      gap: 20px;
+      padding: 24px 16px;
     }
     h1 { font-size: 1.4rem; letter-spacing: 0.05em; }
+    .version { font-size: 0.75rem; color: #555; margin-top: -14px; }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      gap: 8px;
+      width: 100%;
+      max-width: 340px;
+    }
+    .tab-btn {
+      flex: 1;
+      padding: 10px;
+      border-radius: 10px;
+      border: 1px solid #444;
+      background: #222;
+      color: #888;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .tab-btn.active {
+      background: #333;
+      color: #eee;
+      border-color: #666;
+    }
+
+    /* Cards */
     .card {
       background: #222;
       border-radius: 16px;
-      padding: 20px 28px;
+      padding: 20px 24px;
       width: 100%;
       max-width: 340px;
       display: flex;
       flex-direction: column;
       gap: 16px;
     }
+    .tab-pane { display: none; }
+    .tab-pane.active { display: flex; flex-direction: column; gap: 16px; width: 100%; max-width: 340px; }
+
     label { font-size: 0.85rem; color: #aaa; }
-    .row {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
+    .row { display: flex; flex-direction: column; gap: 6px; }
     input[type="number"] {
       width: 100%;
       padding: 10px 14px;
@@ -61,23 +86,56 @@
       cursor: pointer;
       transition: background 0.2s;
     }
-    #toggleBtn {
-      background: #4caf50;
-      color: #fff;
+    #toggleBtn { background: #4caf50; color: #fff; }
+    #toggleBtn.running { background: #e53935; }
+    #testBtn { background: #1565c0; color: #fff; }
+    #trainerBtn { background: #4caf50; color: #fff; }
+    #trainerBtn.running { background: #e53935; }
+
+    /* Trainer display */
+    .trainer-display {
+      background: #1a1a1a;
+      border-radius: 12px;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
     }
-    #toggleBtn.running {
-      background: #e53935;
+    .phase-name { font-size: 1rem; color: #aaa; }
+    .phase-timer { font-size: 2.8rem; font-weight: 700; letter-spacing: 0.04em; font-variant-numeric: tabular-nums; }
+    .phase-timer.p1 { color: #42a5f5; }
+    .phase-timer.p2 { color: #ab47bc; }
+    .cycle-num { font-size: 0.8rem; color: #555; }
+
+    /* Progress bar */
+    .progress-wrap {
+      height: 6px;
+      background: #333;
+      border-radius: 3px;
+      overflow: hidden;
     }
-    #testBtn {
-      background: #1565c0;
-      color: #fff;
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      border-radius: 3px;
+      transition: width 0.5s linear, background 0.4s;
+      background: #42a5f5;
     }
+    .progress-fill.p2 { background: #ab47bc; }
   </style>
 </head>
 <body>
   <h1>Vibro Timer</h1>
-  <div style="font-size:0.75rem;color:#555;">v1.5</div>
-  <div class="card">
+  <div class="version">v1.6</div>
+
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="custom">Custom</button>
+    <button class="tab-btn" data-tab="trainer">Trainer</button>
+  </div>
+
+  <!-- Custom tab -->
+  <div id="tab-custom" class="tab-pane active card">
     <div class="row">
       <label for="duration">Vibration duration (ms)</label>
       <input type="number" id="duration" value="500" min="50" max="5000" step="50" />
@@ -91,60 +149,68 @@
     <div class="status" id="status">Stopped</div>
   </div>
 
+  <!-- Trainer tab -->
+  <div id="tab-trainer" class="tab-pane card">
+    <div class="trainer-display">
+      <div class="phase-name" id="phaseName">—</div>
+      <div class="phase-timer" id="phaseTimer">—:——</div>
+      <div class="cycle-num" id="cycleNum">—</div>
+    </div>
+    <div class="progress-wrap">
+      <div class="progress-fill" id="progressFill"></div>
+    </div>
+    <button id="trainerBtn">Start</button>
+    <div class="status" id="trainerStatus">Stopped · 3 min @75/min → 2 min @66/min</div>
+  </div>
+
   <script>
-    const toggleBtn = document.getElementById('toggleBtn');
-    const testBtn = document.getElementById('testBtn');
-    const statusEl = document.getElementById('status');
-    const durationInput = document.getElementById('duration');
-    const intervalInput = document.getElementById('interval');
+    // ── Tab switching ────────────────────────────────────────────
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+      });
+    });
 
-    let running = false;
+    // ── Wake Lock ────────────────────────────────────────────────
     let wakeLock = null;
-
-    if (!('vibrate' in navigator)) {
-      statusEl.textContent = 'Vibration not supported on this device';
-    }
-
     async function acquireWakeLock() {
       if (!('wakeLock' in navigator)) return;
-      try {
-        wakeLock = await navigator.wakeLock.request('screen');
-      } catch (e) {
-        // Wake lock denied (e.g. battery saver) — vibration still works
-      }
+      try { wakeLock = await navigator.wakeLock.request('screen'); } catch (e) {}
     }
-
     function releaseWakeLock() {
       if (wakeLock) { wakeLock.release(); wakeLock = null; }
     }
 
-    // Re-acquire wake lock and restart pattern after any interruption
-    document.addEventListener('visibilitychange', () => {
-      if (running && document.visibilityState === 'visible') {
-        acquireWakeLock();
-        navigator.vibrate(buildPattern());
-      }
-    });
+    // ── Custom timer ─────────────────────────────────────────────
+    const toggleBtn  = document.getElementById('toggleBtn');
+    const testBtn    = document.getElementById('testBtn');
+    const statusEl   = document.getElementById('status');
+    const durationInput = document.getElementById('duration');
+    const intervalInput = document.getElementById('interval');
+    let running = false;
 
-    function buildPattern() {
+    if (!('vibrate' in navigator)) statusEl.textContent = 'Vibration not supported';
+
+    function buildCustomPattern() {
       const duration = Math.max(50, parseInt(durationInput.value, 10) || 500);
       const interval = Math.max(duration + 50, parseInt(intervalInput.value, 10) || 2000);
-      const pause = interval - duration;
-      // ~30 min worth of pulses; browser handles timing natively — no JS timer needed
-      return Array(1000).fill([duration, pause]).flat();
+      return Array(1000).fill([duration, interval - duration]).flat();
     }
 
-    async function start() {
+    async function startCustom() {
       running = true;
       await acquireWakeLock();
-      navigator.vibrate(buildPattern());
+      navigator.vibrate(buildCustomPattern());
       toggleBtn.textContent = 'Stop';
       toggleBtn.classList.add('running');
       statusEl.textContent = 'Running…';
       statusEl.classList.add('active');
     }
 
-    function stop() {
+    function stopCustom() {
       running = false;
       releaseWakeLock();
       navigator.vibrate(0);
@@ -154,16 +220,130 @@
       statusEl.classList.remove('active');
     }
 
-    toggleBtn.addEventListener('click', () => running ? stop() : start());
-
-    testBtn.addEventListener('click', () => {
-      const duration = Math.max(50, parseInt(durationInput.value, 10) || 500);
-      navigator.vibrate(duration);
+    toggleBtn.addEventListener('click', () => running ? stopCustom() : startCustom());
+    testBtn.addEventListener('click', () => navigator.vibrate(Math.max(50, parseInt(durationInput.value, 10) || 500)));
+    [durationInput, intervalInput].forEach(el => {
+      el.addEventListener('change', () => { if (running) { stopCustom(); startCustom(); } });
     });
 
-    // Restart with new pattern when settings change while running
-    [durationInput, intervalInput].forEach(el => {
-      el.addEventListener('change', () => { if (running) { stop(); start(); } });
+    // ── Trainer ──────────────────────────────────────────────────
+    const T_PHASE1   = 3 * 60 * 1000;          // 180 000 ms
+    const T_PHASE2   = 2 * 60 * 1000;          // 120 000 ms
+    const T_CYCLE    = T_PHASE1 + T_PHASE2;    // 300 000 ms
+    const BEAT1      = Math.round(60000 / 75); // 800 ms
+    const BEAT2      = Math.round(60000 / 66); // 909 ms
+    const VIB_MS     = 150;
+
+    const trainerBtn    = document.getElementById('trainerBtn');
+    const trainerStatus = document.getElementById('trainerStatus');
+    const phaseNameEl   = document.getElementById('phaseName');
+    const phaseTimerEl  = document.getElementById('phaseTimer');
+    const cycleNumEl    = document.getElementById('cycleNum');
+    const progressFill  = document.getElementById('progressFill');
+
+    let trainerRunning = false;
+    let trainerStart   = null; // Date.now() when session began
+    let displayTimer   = null;
+
+    function buildTrainerPattern(offsetMs) {
+      const pattern = [];
+      const posInCycle = offsetMs % T_CYCLE;
+
+      function addBeats(totalMs, beatMs) {
+        const n = Math.floor(totalMs / beatMs);
+        for (let i = 0; i < n; i++) pattern.push(VIB_MS, beatMs - VIB_MS);
+      }
+
+      // Finish the current partial phase first
+      if (posInCycle < T_PHASE1) {
+        addBeats(T_PHASE1 - posInCycle, BEAT1);
+        addBeats(T_PHASE2, BEAT2);
+      } else {
+        addBeats(T_CYCLE - posInCycle, BEAT2);
+      }
+
+      // Then append 30 full cycles (~2.5 hours) so the pattern runs indefinitely
+      for (let i = 0; i < 30; i++) {
+        addBeats(T_PHASE1, BEAT1);
+        addBeats(T_PHASE2, BEAT2);
+      }
+
+      return pattern;
+    }
+
+    function updateTrainerDisplay() {
+      if (!trainerStart) return;
+      const elapsed    = Date.now() - trainerStart;
+      const posInCycle = elapsed % T_CYCLE;
+      const cycle      = Math.floor(elapsed / T_CYCLE) + 1;
+
+      let phase, remaining, total;
+      if (posInCycle < T_PHASE1) {
+        phase = 1; remaining = T_PHASE1 - posInCycle; total = T_PHASE1;
+      } else {
+        phase = 2; remaining = T_CYCLE - posInCycle; total = T_PHASE2;
+      }
+
+      const mins = Math.floor(remaining / 60000);
+      const secs = Math.floor((remaining % 60000) / 1000);
+
+      phaseNameEl.textContent  = phase === 1 ? 'Phase 1 · 75/min' : 'Phase 2 · 66/min';
+      phaseTimerEl.textContent = `${mins}:${String(secs).padStart(2, '0')}`;
+      phaseTimerEl.className   = `phase-timer p${phase}`;
+      cycleNumEl.textContent   = `Cycle ${cycle}`;
+      progressFill.style.width = `${((total - remaining) / total * 100).toFixed(1)}%`;
+      progressFill.className   = `progress-fill p${phase}`;
+    }
+
+    function startDisplayTimer() {
+      clearInterval(displayTimer);
+      updateTrainerDisplay();
+      displayTimer = setInterval(updateTrainerDisplay, 500);
+    }
+
+    async function startTrainer() {
+      trainerRunning = true;
+      trainerStart   = Date.now();
+      await acquireWakeLock();
+      navigator.vibrate(buildTrainerPattern(0));
+      startDisplayTimer();
+      trainerBtn.textContent = 'Stop';
+      trainerBtn.classList.add('running');
+      trainerStatus.textContent = 'Running…';
+      trainerStatus.classList.add('active');
+    }
+
+    function resumeTrainer() {
+      const offset = Date.now() - trainerStart;
+      acquireWakeLock();
+      navigator.vibrate(buildTrainerPattern(offset));
+      startDisplayTimer();
+    }
+
+    function stopTrainer() {
+      trainerRunning = false;
+      trainerStart   = null;
+      clearInterval(displayTimer);
+      releaseWakeLock();
+      navigator.vibrate(0);
+      trainerBtn.textContent = 'Start';
+      trainerBtn.classList.remove('running');
+      trainerStatus.textContent = 'Stopped · 3 min @75/min → 2 min @66/min';
+      trainerStatus.classList.remove('active');
+      phaseNameEl.textContent  = '—';
+      phaseTimerEl.textContent = '—:——';
+      phaseTimerEl.className   = 'phase-timer';
+      cycleNumEl.textContent   = '—';
+      progressFill.style.width = '0%';
+    }
+
+    trainerBtn.addEventListener('click', () => trainerRunning ? stopTrainer() : startTrainer());
+
+    // ── Visibility recovery (both modes) ────────────────────────
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState !== 'visible') return;
+      if (running)        { acquireWakeLock(); navigator.vibrate(buildCustomPattern()); }
+      if (trainerRunning) { resumeTrainer(); }
     });
   </script>
 </body>
