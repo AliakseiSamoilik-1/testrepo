@@ -132,7 +132,7 @@
 </head>
 <body>
   <h1>Vibro Timer</h1>
-  <div class="version">v1.8</div>
+  <div class="version">v1.9</div>
 
   <div class="tabs">
     <button class="tab-btn active" data-tab="custom">Custom</button>
@@ -268,10 +268,10 @@
     const p2bpmInput    = document.getElementById('p2bpm');
     const trainerInputs = [p1minsInput, p1bpmInput, p2minsInput, p2bpmInput];
 
-    let trainerRunning = false;
-    let trainerStart   = null;
-    let displayTimer   = null;
-    let beatTimeout    = null;
+    let trainerRunning  = false;
+    let trainerStart    = null;
+    let displayTimer    = null;
+    let refreshInterval = null;
     // Active session params (set on start, fixed for the session)
     let tPhase1, tPhase2, tCycle, beat1, beat2;
 
@@ -291,21 +291,24 @@
       return `Stopped · ${m1} min @${b1}/min → ${m2} min @${b2}/min`;
     }
 
-    // Beat scheduler — avoids browser pattern-length limits
-    function scheduleNextBeat() {
-      if (!trainerRunning) return;
+    // Build a short native pattern (~20 s) starting from current phase position.
+    // Native patterns run in hardware without needing JS timers, sidestepping
+    // Android/Chrome timer throttling. Re-issued every 15 s so it never runs out.
+    function buildCurrentPattern() {
       const posInCycle = (Date.now() - trainerStart) % tCycle;
-      let beat, timeInBeat;
-      if (posInCycle < tPhase1) {
-        beat = beat1; timeInBeat = posInCycle % beat1;
-      } else {
-        beat = beat2; timeInBeat = (posInCycle - tPhase1) % beat2;
+      const pattern = [];
+      let p = posInCycle;
+      for (let i = 0; i < 25; i++) {
+        const cp   = p % tCycle;
+        const beat = cp < tPhase1 ? beat1 : beat2;
+        pattern.push(VIB_MS, beat - VIB_MS);
+        p += beat;
       }
-      beatTimeout = setTimeout(() => {
-        if (!trainerRunning) return;
-        navigator.vibrate(VIB_MS);
-        scheduleNextBeat();
-      }, beat - timeInBeat);
+      return pattern;
+    }
+
+    function issuePattern() {
+      if (trainerRunning) navigator.vibrate(buildCurrentPattern());
     }
 
     function updateTrainerDisplay() {
@@ -345,8 +348,8 @@
       trainerStart   = Date.now();
       trainerInputs.forEach(el => el.disabled = true);
       await acquireWakeLock();
-      navigator.vibrate(VIB_MS);
-      scheduleNextBeat();
+      issuePattern();
+      refreshInterval = setInterval(issuePattern, 15000);
       startDisplayTimer();
       trainerBtn.textContent = 'Stop';
       trainerBtn.classList.add('running');
@@ -355,17 +358,17 @@
     }
 
     function resumeTrainer() {
-      clearTimeout(beatTimeout);
+      clearInterval(refreshInterval);
       acquireWakeLock();
-      navigator.vibrate(VIB_MS);
-      scheduleNextBeat();
+      issuePattern();
+      refreshInterval = setInterval(issuePattern, 15000);
       startDisplayTimer();
     }
 
     function stopTrainer() {
       trainerRunning = false;
       trainerStart   = null;
-      clearTimeout(beatTimeout);
+      clearInterval(refreshInterval);
       clearInterval(displayTimer);
       trainerInputs.forEach(el => el.disabled = false);
       releaseWakeLock();
