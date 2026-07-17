@@ -16,7 +16,7 @@ class MainActivity : AppCompatActivity() {
 
     // Custom tab
     private lateinit var etDuration: EditText
-    private lateinit var etInterval: EditText
+    private lateinit var etBpm: EditText
     private lateinit var btnCustomToggle: Button
     private lateinit var tvCustomStatus: TextView
 
@@ -94,8 +94,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun bindViews() {
-        etDuration      = findViewById(R.id.etDuration)
-        etInterval      = findViewById(R.id.etInterval)
+        etDuration = findViewById(R.id.etDuration)
+        etBpm      = findViewById(R.id.etBpm)
         btnCustomToggle = findViewById(R.id.btnCustomToggle)
         tvCustomStatus  = findViewById(R.id.tvCustomStatus)
 
@@ -136,7 +136,8 @@ class MainActivity : AppCompatActivity() {
                 sendAction(VibrationService.ACTION_STOP)
             } else {
                 val d = etDuration.text.toString().toLongOrNull()?.coerceAtLeast(50L) ?: 500L
-                val i = etInterval.text.toString().toLongOrNull()?.coerceAtLeast(d + 50L) ?: 2000L
+                val bpm = etBpm.text.toString().toLongOrNull()?.coerceAtLeast(1L) ?: 30L
+                val i = (60_000L / bpm).coerceAtLeast(d + 50L)
                 startForegroundService(Intent(this, VibrationService::class.java).apply {
                     action = VibrationService.ACTION_START_CUSTOM
                     putExtra(VibrationService.EXTRA_DURATION, d)

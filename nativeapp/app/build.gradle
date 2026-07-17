@@ -11,11 +11,33 @@ android {
         applicationId "com.vibrotimer"
         minSdk 26
         targetSdk 33
-        versionCode 1
-        versionName "1.0"
+        versionCode 6
+        versionName "1.5"
+    }
+
+    signingConfigs {
+        release {
+            storeFile file("../vibrotimer.keystore")
+            storePassword "vibrotimer123"
+            keyAlias "vibrotimer"
+            keyPassword "vibrotimer123"
+        }
+    }
+
+    buildTypes {
+        release {
+            signingConfig signingConfigs.release
+            minifyEnabled false
+        }
     }
 
     buildFeatures { viewBinding true }
+
+    applicationVariants.all { variant ->
+        variant.outputs.all {
+            outputFileName = "VibroTimer-${variant.versionName}.apk"
+        }
+    }
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
