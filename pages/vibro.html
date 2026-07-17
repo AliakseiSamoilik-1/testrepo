@@ -98,10 +98,29 @@
     const intervalInput = document.getElementById('interval');
 
     let running = false;
+    let wakeLock = null;
 
     if (!('vibrate' in navigator)) {
       statusEl.textContent = 'Vibration not supported on this device';
     }
+
+    async function acquireWakeLock() {
+      if (!('wakeLock' in navigator)) return;
+      try {
+        wakeLock = await navigator.wakeLock.request('screen');
+      } catch (e) {
+        // Wake lock denied (e.g. battery saver) — vibration still works
+      }
+    }
+
+    function releaseWakeLock() {
+      if (wakeLock) { wakeLock.release(); wakeLock = null; }
+    }
+
+    // Re-acquire after browser releases it when tab becomes hidden then visible again
+    document.addEventListener('visibilitychange', () => {
+      if (running && document.visibilityState === 'visible') acquireWakeLock();
+    });
 
     function buildPattern() {
       const duration = Math.max(50, parseInt(durationInput.value, 10) || 500);
@@ -111,8 +130,9 @@
       return Array(1000).fill([duration, pause]).flat();
     }
 
-    function start() {
+    async function start() {
       running = true;
+      await acquireWakeLock();
       navigator.vibrate(buildPattern());
       toggleBtn.textContent = 'Stop';
       toggleBtn.classList.add('running');
@@ -122,6 +142,7 @@
 
     function stop() {
       running = false;
+      releaseWakeLock();
       navigator.vibrate(0);
       toggleBtn.textContent = 'Start';
       toggleBtn.classList.remove('running');
