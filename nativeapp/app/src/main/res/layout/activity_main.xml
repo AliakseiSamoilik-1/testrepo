@@ -1,0 +1,346 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#111111">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp"
+        android:gravity="center_horizontal">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:text="Vibro Timer"
+            android:textColor="#EEEEEE"
+            android:textSize="22sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            android:text="v1.1"
+            android:textColor="#555555"
+            android:textSize="11sp" />
+
+        <!-- Tabs -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            android:orientation="horizontal"
+            android:weightSum="2">
+
+            <Button
+                android:id="@+id/btnTabCustom"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="40dp"
+                android:layout_weight="1"
+                android:layout_marginEnd="4dp"
+                android:text="Custom"
+                android:textColor="#EEEEEE" />
+
+            <Button
+                android:id="@+id/btnTabTrainer"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="40dp"
+                android:layout_weight="1"
+                android:layout_marginStart="4dp"
+                android:text="Trainer"
+                android:textColor="#EEEEEE" />
+        </LinearLayout>
+
+        <!-- ── Custom Tab ─────────────────────────────────────────── -->
+        <LinearLayout
+            android:id="@+id/layoutCustom"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="#222222"
+            android:orientation="vertical"
+            android:padding="20dp"
+            android:layout_marginBottom="8dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Vibration duration (ms)"
+                android:textColor="#AAAAAA"
+                android:textSize="13sp" />
+
+            <EditText
+                android:id="@+id/etDuration"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:layout_marginBottom="12dp"
+                android:backgroundTint="#444444"
+                android:inputType="number"
+                android:text="500"
+                android:textColor="#EEEEEE" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Interval between vibrations (ms)"
+                android:textColor="#AAAAAA"
+                android:textSize="13sp" />
+
+            <EditText
+                android:id="@+id/etInterval"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:layout_marginBottom="16dp"
+                android:backgroundTint="#444444"
+                android:inputType="number"
+                android:text="2000"
+                android:textColor="#EEEEEE" />
+
+            <Button
+                android:id="@+id/btnTest"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:layout_marginBottom="8dp"
+                android:backgroundTint="#1565C0"
+                android:text="Test vibration"
+                android:textColor="#FFFFFF" />
+
+            <Button
+                android:id="@+id/btnCustomToggle"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:layout_marginBottom="8dp"
+                android:backgroundTint="#388E3C"
+                android:text="Start"
+                android:textColor="#FFFFFF" />
+
+            <TextView
+                android:id="@+id/tvCustomStatus"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:text="Stopped"
+                android:textColor="#888888"
+                android:textSize="14sp" />
+        </LinearLayout>
+
+        <!-- ── Trainer Tab ────────────────────────────────────────── -->
+        <LinearLayout
+            android:id="@+id/layoutTrainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="#222222"
+            android:orientation="vertical"
+            android:padding="20dp"
+            android:layout_marginBottom="8dp"
+            android:visibility="gone">
+
+            <!-- Phase 1 config -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="6dp"
+                android:text="PHASE 1"
+                android:textColor="#666666"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.08" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="14dp"
+                android:orientation="horizontal"
+                android:weightSum="2">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginEnd="6dp"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Duration (min)"
+                        android:textColor="#AAAAAA"
+                        android:textSize="12sp" />
+
+                    <EditText
+                        android:id="@+id/etP1Mins"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:backgroundTint="#444444"
+                        android:inputType="number"
+                        android:text="3"
+                        android:textColor="#EEEEEE" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="6dp"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Tempo (bpm)"
+                        android:textColor="#AAAAAA"
+                        android:textSize="12sp" />
+
+                    <EditText
+                        android:id="@+id/etP1Bpm"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:backgroundTint="#444444"
+                        android:inputType="number"
+                        android:text="75"
+                        android:textColor="#EEEEEE" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Phase 2 config -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="6dp"
+                android:text="PHASE 2"
+                android:textColor="#666666"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.08" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="14dp"
+                android:orientation="horizontal"
+                android:weightSum="2">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginEnd="6dp"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Duration (min)"
+                        android:textColor="#AAAAAA"
+                        android:textSize="12sp" />
+
+                    <EditText
+                        android:id="@+id/etP2Mins"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:backgroundTint="#444444"
+                        android:inputType="number"
+                        android:text="2"
+                        android:textColor="#EEEEEE" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="6dp"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Tempo (bpm)"
+                        android:textColor="#AAAAAA"
+                        android:textSize="12sp" />
+
+                    <EditText
+                        android:id="@+id/etP2Bpm"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:backgroundTint="#444444"
+                        android:inputType="number"
+                        android:text="66"
+                        android:textColor="#EEEEEE" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Phase display -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="#1A1A1A"
+                android:orientation="vertical"
+                android:padding="16dp"
+                android:gravity="center"
+                android:layout_marginBottom="12dp">
+
+                <TextView
+                    android:id="@+id/tvPhaseName"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="—"
+                    android:textColor="#AAAAAA"
+                    android:textSize="14sp" />
+
+                <TextView
+                    android:id="@+id/tvPhaseTimer"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="—:——"
+                    android:textColor="#444444"
+                    android:textSize="52sp"
+                    android:textStyle="bold"
+                    android:fontFamily="monospace" />
+
+                <TextView
+                    android:id="@+id/tvCycleNum"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text=""
+                    android:textColor="#555555"
+                    android:textSize="12sp" />
+            </LinearLayout>
+
+            <ProgressBar
+                android:id="@+id/progressBar"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="8dp"
+                android:layout_marginBottom="16dp"
+                android:max="100"
+                android:progress="0"
+                android:progressTint="#42A5F5" />
+
+            <Button
+                android:id="@+id/btnTrainerToggle"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:layout_marginBottom="8dp"
+                android:backgroundTint="#388E3C"
+                android:text="Start"
+                android:textColor="#FFFFFF" />
+
+            <TextView
+                android:id="@+id/tvTrainerStatus"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:text="Stopped"
+                android:textColor="#888888"
+                android:textSize="13sp" />
+        </LinearLayout>
+
+    </LinearLayout>
+</ScrollView>

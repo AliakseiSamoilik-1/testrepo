@@ -1,0 +1,20 @@
+*.iml
+.gradle/
+local.properties
+.idea/
+.DS_Store
+build/
+captures/
+.externalNativeBuild/
+.cxx/
+*.keystore
+!debug.keystore
+
+# Old Expo files (can be deleted)
+node_modules/
+.expo/
+App.tsx
+package.json
+app.json
+babel.config.js
+tsconfig.json
