@@ -97,21 +97,23 @@
     const durationInput = document.getElementById('duration');
     const intervalInput = document.getElementById('interval');
 
-    let timerId = null;
+    let running = false;
 
-    function vibrate() {
-      const ms = parseInt(durationInput.value, 10) || 500;
-      if ('vibrate' in navigator) {
-        navigator.vibrate(ms);
-      } else {
-        statusEl.textContent = 'Vibration not supported on this device';
-      }
+    if (!('vibrate' in navigator)) {
+      statusEl.textContent = 'Vibration not supported on this device';
+    }
+
+    function buildPattern() {
+      const duration = Math.max(50, parseInt(durationInput.value, 10) || 500);
+      const interval = Math.max(duration + 50, parseInt(intervalInput.value, 10) || 2000);
+      const pause = interval - duration;
+      // ~30 min worth of pulses; browser handles timing natively — no JS timer needed
+      return Array(1000).fill([duration, pause]).flat();
     }
 
     function start() {
-      const intervalMs = parseInt(intervalInput.value, 10) || 2000;
-      vibrate();
-      timerId = setInterval(vibrate, intervalMs);
+      running = true;
+      navigator.vibrate(buildPattern());
       toggleBtn.textContent = 'Stop';
       toggleBtn.classList.add('running');
       statusEl.textContent = 'Running…';
@@ -119,24 +121,24 @@
     }
 
     function stop() {
-      clearInterval(timerId);
-      timerId = null;
-      navigator.vibrate && navigator.vibrate(0);
+      running = false;
+      navigator.vibrate(0);
       toggleBtn.textContent = 'Start';
       toggleBtn.classList.remove('running');
       statusEl.textContent = 'Stopped';
       statusEl.classList.remove('active');
     }
 
-    toggleBtn.addEventListener('click', () => {
-      timerId ? stop() : start();
+    toggleBtn.addEventListener('click', () => running ? stop() : start());
+
+    testBtn.addEventListener('click', () => {
+      const duration = Math.max(50, parseInt(durationInput.value, 10) || 500);
+      navigator.vibrate(duration);
     });
 
-    testBtn.addEventListener('click', vibrate);
-
-    // Restart timer when interval changes while running
-    intervalInput.addEventListener('change', () => {
-      if (timerId) { stop(); start(); }
+    // Restart with new pattern when settings change while running
+    [durationInput, intervalInput].forEach(el => {
+      el.addEventListener('change', () => { if (running) { stop(); start(); } });
     });
   </script>
 </body>
