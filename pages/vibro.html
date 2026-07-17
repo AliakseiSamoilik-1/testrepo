@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vibro Timer</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100svh;
+      background: #111;
+      color: #eee;
+      gap: 24px;
+      padding: 24px;
+    }
+    h1 { font-size: 1.4rem; letter-spacing: 0.05em; }
+    .card {
+      background: #222;
+      border-radius: 16px;
+      padding: 20px 28px;
+      width: 100%;
+      max-width: 340px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    label { font-size: 0.85rem; color: #aaa; }
+    .row {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    input[type="number"] {
+      width: 100%;
+      padding: 10px 14px;
+      border-radius: 10px;
+      border: 1px solid #444;
+      background: #333;
+      color: #eee;
+      font-size: 1rem;
+    }
+    .status {
+      font-size: 0.9rem;
+      color: #888;
+      text-align: center;
+      min-height: 1.2em;
+    }
+    .status.active { color: #4caf50; }
+    button {
+      width: 100%;
+      padding: 14px;
+      border-radius: 12px;
+      border: none;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    #toggleBtn {
+      background: #4caf50;
+      color: #fff;
+    }
+    #toggleBtn.running {
+      background: #e53935;
+    }
+    #testBtn {
+      background: #1565c0;
+      color: #fff;
+    }
+  </style>
+</head>
+<body>
+  <h1>Vibro Timer</h1>
+  <div class="card">
+    <div class="row">
+      <label for="duration">Vibration duration (ms)</label>
+      <input type="number" id="duration" value="500" min="50" max="5000" step="50" />
+    </div>
+    <div class="row">
+      <label for="interval">Interval between vibrations (ms)</label>
+      <input type="number" id="interval" value="2000" min="200" max="30000" step="100" />
+    </div>
+    <button id="testBtn">Test vibration</button>
+    <button id="toggleBtn">Start</button>
+    <div class="status" id="status">Stopped</div>
+  </div>
+
+  <script>
+    const toggleBtn = document.getElementById('toggleBtn');
+    const testBtn = document.getElementById('testBtn');
+    const statusEl = document.getElementById('status');
+    const durationInput = document.getElementById('duration');
+    const intervalInput = document.getElementById('interval');
+
+    let timerId = null;
+
+    function vibrate() {
+      const ms = parseInt(durationInput.value, 10) || 500;
+      if ('vibrate' in navigator) {
+        navigator.vibrate(ms);
+      } else {
+        statusEl.textContent = 'Vibration not supported on this device';
+      }
+    }
+
+    function start() {
+      const intervalMs = parseInt(intervalInput.value, 10) || 2000;
+      vibrate();
+      timerId = setInterval(vibrate, intervalMs);
+      toggleBtn.textContent = 'Stop';
+      toggleBtn.classList.add('running');
+      statusEl.textContent = 'Running…';
+      statusEl.classList.add('active');
+    }
+
+    function stop() {
+      clearInterval(timerId);
+      timerId = null;
+      navigator.vibrate && navigator.vibrate(0);
+      toggleBtn.textContent = 'Start';
+      toggleBtn.classList.remove('running');
+      statusEl.textContent = 'Stopped';
+      statusEl.classList.remove('active');
+    }
+
+    toggleBtn.addEventListener('click', () => {
+      timerId ? stop() : start();
+    });
+
+    testBtn.addEventListener('click', vibrate);
+
+    // Restart timer when interval changes while running
+    intervalInput.addEventListener('change', () => {
+      if (timerId) { stop(); start(); }
+    });
+  </script>
+</body>
+</html>
